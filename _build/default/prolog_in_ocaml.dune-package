@@ -1,0 +1,7 @@
+(lang dune 3.2)
+(name prolog_in_ocaml)
+(sections (lib .) (bin ../../bin) (doc ../../doc/prolog_in_ocaml))
+(files
+ (lib (META dune-package opam))
+ (bin (prolog_in_ocaml))
+ (doc (README.md)))

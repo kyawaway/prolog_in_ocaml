@@ -1,0 +1,10 @@
+(** @canonical Prolog_in_ocaml.Ast *)
+module Ast = Prolog_in_ocaml__Ast
+
+
+(** @canonical Prolog_in_ocaml.Lexer *)
+module Lexer = Prolog_in_ocaml__Lexer
+
+
+(** @canonical Prolog_in_ocaml.Parser *)
+module Parser = Prolog_in_ocaml__Parser

@@ -1,0 +1,9 @@
+(menhir
+ (flags (--explain))
+ (modules parser))
+
+(ocamllex
+ (modules lexer))
+
+(library
+ (name prolog_in_ocaml))
