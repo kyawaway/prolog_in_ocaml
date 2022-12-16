@@ -6,4 +6,5 @@
  (modules lexer))
 
 (library
- (name prolog_in_ocaml))
+ (public_name prolog_in_ocaml.preproc)
+ (name preproc))

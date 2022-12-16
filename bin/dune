@@ -1,4 +1,4 @@
 (executable
  (public_name prolog_in_ocaml)
  (name main)
- (libraries prolog_in_ocaml))
+ (libraries prolog_in_ocaml.preproc))
