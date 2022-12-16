@@ -27,7 +27,7 @@ let atom = lower alphanum *
 
 (** variable **)
 
-let variable = lower alphanum *
+let variable = upper alphanum *
 
 (** **)
 
