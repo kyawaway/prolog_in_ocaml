@@ -9,6 +9,7 @@
 let lower = ['a' - 'z']
 let upper = ['A' - 'Z']
 let digit = ['0' - '9']
+let space = [' ' '\t']
 let underscore = '_'
 
 let end_line = '\n'
@@ -32,6 +33,9 @@ let variable = upper alphanum *
 (** **)
 
 rule token = parse
+    (*** escape ***)
+    | [' ' '\t' '\n'] { token lexbuf }
+
     (*** symbols ***)
     | "("
         { LPAREN }
@@ -65,6 +69,6 @@ and atoms acc = parse
         { ATOM acc }
 
 and strings acc = parse
-    | string_quote
+    | string_quote space * string_quote
         { STRING acc }
 
