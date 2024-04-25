@@ -5,7 +5,7 @@ open Eval
 
 
 let repl = 
-    print_string "\n********** Welcoml to my Interpreter! **********\n";
+    print_string "\n********** Welcome to my Prolog Interpreter! **********\n";
     let rec loop db = (
         try (
             let lexbuf = Lexing.from_channel stdin
