@@ -1,4 +1,5 @@
 open Ast
+open Common
 
 
 let reset = 
@@ -135,7 +136,36 @@ let rec eval_query (query, db, subs) =
                 | _ -> eval_query (goals, db, subs)
 
 
-let string_of_result result vars = "success\n"
+let string_of_result e orig_query_vars orig_vars_num =
+  List.fold_left (
+        fun r2 env ->
+        if orig_vars_num > 0
+        then
+          "====================\n" ^
+            (* iterate over original query vars to find their substitution *)
+            (List.fold_left (
+                 fun r d -> (
+                   match d with
+                   | VarExp v -> (
+                     (* find variable substitution in the solution *)
+                     try let f = List.assoc (VarExp v) env in (
+                             match f with
+                             | VarExp v2 ->
+                                (v ^ " is free\n") ^ r
+                             | _ ->
+                                (v ^ " = " ^ (
+                                   readable_string_of_exp f) ^ "\n") ^ r
+                           )
+                     with Not_found -> (v ^ " is free\n") ^ r)
+                   | _ -> r
+                 )
+               ) "" (orig_query_vars) ) ^
+              "====================\n"  ^ r2
+        else "" ^ r2
+     )  (if List.length e > 0 (* if e is empty then there were no solutions *)
+         then "true\n"
+         else "false\n")
+                  e
 
 let eval_dec (dec, db) =
     match dec with
@@ -143,7 +173,8 @@ let eval_dec (dec, db) =
     | Query body -> (
         let result = eval_query (body, db, []) in
         let vars = uniq (find_vars body) in
-        print_string (string_of_result result vars);
+        let vars_num = List.length vars in
+        print_string (string_of_result result vars vars_num);
         db
     )
 
