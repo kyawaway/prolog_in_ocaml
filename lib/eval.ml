@@ -3,12 +3,16 @@ open Common
 
 let reset =
   let next = ref 0 in
+  let r = next := 0 in
+  r
+
+let fresh =
+  let next = ref 0 in
   let f () =
     next := !next + 1;
     string_of_int !next
   in
-  let r = next := 0 in
-  (f, r)
+  f
 
 let rec find_vars query =
   match query with
@@ -98,52 +102,111 @@ let rec unify constraints =
             | VarExp k -> unify ((t, s) :: cdr)
             | _ -> None))
 
+let rec find_vars_string q =
+  match q with
+  | [] -> []
+  | x :: xs -> (
+      match x with
+      | VarExp v -> v :: find_vars_string xs
+      | ConstExp c -> find_vars_string xs
+      | TermExp (s, el) -> find_vars_string el @ find_vars_string xs)
+
+let rec rename_vars_in_dec d =
+  match d with
+  | Clause (h, b) ->
+      let head_vars = find_vars [ h ] in
+      let body_vars = find_vars b in
+      let vars = uniq (head_vars @ body_vars) in
+      let sub = List.map (fun x -> (x, VarExp (fresh ()))) vars in
+      Clause (sub_lift_goal sub h, sub_lift_goals sub b)
+  | Query b ->
+      let body_vars = find_vars b in
+      let vars = uniq body_vars in
+      let sub = List.map (fun x -> (x, VarExp (fresh ()))) vars in
+      Query (sub_lift_goals sub b)
+
 let rec eval_query (query, db, subs) =
   match query with
   | [] -> [ subs ]
   | goal :: goals -> (
+      let string_vars_list = find_vars_string query |> uniq in
+      let subs =
+        List.filter
+          (fun (v, _) ->
+            match v with
+            | VarExp elt ->
+                List.exists (fun a -> String.equal elt a) string_vars_list
+            | _ -> false)
+          subs
+      in
       match goal with
       | TermExp ("true", []) -> eval_query (goals, db, subs)
       | TermExp (_, _) ->
-          let onstep _ clause =
-            match clause with
-            | Clause (head, body) -> (
-                match unify [ (goal, head) ] with
-                | Some subs2 ->
-                    eval_query
-                      ( sub_lift_goals subs2 body @ sub_lift_goals subs2 goals,
-                        db,
-                        subs2 )
-                | _ -> [])
-            | _ -> []
-          in
-          List.fold_left onstep [] db
+          (* let onstep _ clause =
+                   match clause with
+                   | Clause (head, body) -> (
+                       match unify [ (goal, head) ] with
+                       | Some subs2 ->
+                           eval_query
+                             ( sub_lift_goals subs2 body @ sub_lift_goals subs2 goals,
+                               db,
+                               subs2 )
+                       | _ -> [])
+                   | _ -> []
+                 in
+                 List.fold_left onstep [] db
+             | _ -> eval_query (goals, db, subs))
+          *)
+          List.fold_right
+            (fun rule r ->
+              match rule with
+              | Clause (h, b) -> (
+                  match unify [ (goal, h) ] with
+                  | Some s -> (
+                      match unify (s @ subs) with
+                      | Some env2 ->
+                          if List.length b = 1 then
+                            match b with
+                            | TermExp ("true", _) :: ys ->
+                                eval_query (sub_lift_goals s goals, db, env2)
+                                @ r
+                            | _ ->
+                                eval_query
+                                  ( sub_lift_goals s b @ sub_lift_goals s goals,
+                                    db,
+                                    env2 )
+                                @ r
+                          else
+                            eval_query
+                              ( sub_lift_goals s b @ sub_lift_goals s goals,
+                                db,
+                                env2 )
+                            @ r
+                      | _ -> r)
+                  | _ -> r)
+              | _ -> r)
+            db []
       | _ -> eval_query (goals, db, subs))
 
-let string_of_result e orig_query_vars orig_vars_num =
+let string_of_result e vars vars_num =
   List.fold_left
-    (fun r2 env ->
-      if orig_vars_num > 0 then
-        "====================\n"
-        (* iterate over original query vars to find their substitution *)
-        ^ List.fold_left
-            (fun r d ->
-              match d with
-              | VarExp v -> (
-                  (* find variable substitution in the solution *)
-                  try
-                    let f = List.assoc (VarExp v) env in
-                    match f with
-                    | VarExp v2 -> (v ^ " is free\n") ^ r
-                    | _ -> (v ^ " = " ^ readable_string_of_exp f ^ "\n") ^ r
-                  with Not_found -> (v ^ " is free\n") ^ r)
-              | _ -> r)
-            "" orig_query_vars
-        ^ "====================\n" ^ r2
-      else "" ^ r2)
-    (if List.length e > 0 (* if e is empty then there were no solutions *) then
-       "true\n"
-     else "false\n")
+    (fun res subs ->
+      if vars_num > 0 then
+        List.fold_left
+          (fun r d ->
+            match d with
+            | VarExp v -> (
+                try
+                  let f = List.assoc (VarExp v) subs in
+                  match f with
+                  | VarExp _ -> (v ^ " is free\n") ^ r
+                  | _ -> (v ^ " = " ^ readable_string_of_exp f ^ "\n") ^ r
+                with Not_found -> (v ^ " is free\n") ^ r)
+            | _ -> r)
+          "" vars
+        ^ res
+      else "" ^ res)
+    (if List.length e > 0 then "true\n" else "false\n")
     e
 
 let eval_dec (dec, db) =
